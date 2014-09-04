@@ -3,7 +3,6 @@
 /aclocal.m4
 /autom4te.cache/
 /config.*
-/configure
 /depcomp
 /install-sh
 /libtool
@@ -16,3 +15,9 @@
 .libs/
 *.l[ao]
 *~
+*.log
+*.scan
+/src/Makefile
+/src/Makefile.in
+/test/Makefile
+/test/Makefile.in

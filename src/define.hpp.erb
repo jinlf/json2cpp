@@ -1,0 +1,130 @@
+#ifndef JSON_DEFINE_HPP__
+#define JSON_DEFINE_HPP__
+
+#include <json/json.h>
+#include "define.hpp"
+#include "json_serializer_helper.hpp"
+<% GENERATION_LIMIT = 31 %>
+#define FE_1(WHAT, X) WHAT(X)<%2.upto(GENERATION_LIMIT+1) {|i|%>
+#define FE_<%=i%>(WHAT, X, ...) WHAT(X),FE_<%=i-1%>(WHAT, __VA_ARGS__)<%}%>
+
+#define GET_MACRO(x,<%1.upto(GENERATION_LIMIT+1) {|i|%>_<%=i%>,<%}%>NAME,...) NAME 
+
+#define FOR_EACH(action, ...) \
+    GET_MACRO(,##__VA_ARGS__<%(GENERATION_LIMIT+1).downto(1) {|i|%>,FE_<%=i%><%}%>)(action,##__VA_ARGS__)
+
+#define EXPAND(...) FOR_EACH(NVP, ##__VA_ARGS__)
+
+
+#define ST_1(WHAT, X) WHAT(X)<%2.upto(GENERATION_LIMIT+1) {|i|%>
+#define ST_<%=i%>(WHAT, X, ...) WHAT(X);ST_<%=i-1%>(WHAT, __VA_ARGS__)<%}%>
+
+#define FOR_EACH_ST(action, ...) \
+    GET_MACRO(,##__VA_ARGS__<%(GENERATION_LIMIT+1).downto(1) {|i|%>,ST_<%=i%><%}%>)(action,##__VA_ARGS__)
+
+#define SERIALIZE_FUNC(n) \
+	do { \
+		std::string key = #n ; \
+		if (m_flags.find(key) != m_flags.end()) { \
+			pk.SerializeNVP(n); \
+		} \
+	} while(0)
+
+#define SERIALIZE(...) FOR_EACH_ST(SERIALIZE_FUNC, ##__VA_ARGS__)
+
+#define DESERIALIZE_FUNC(n) \
+	do { \
+		std::string key = #n ; \
+		if (pk.JsonValue.isMember(key)) { \
+			pk.DeSerializeNVP(n); \
+			m_flags[key] = true; \
+		} \
+	} while(0)
+
+#define DESERIALIZE(...) FOR_EACH_ST(DESERIALIZE_FUNC, ##__VA_ARGS__)
+
+
+#define JSON_DEFINE(...) \
+    void Serialize(JsonSerializerHelper &pk) const \
+    {	\
+      SERIALIZE(__VA_ARGS__);	\
+    }	\
+    void DeSerialize(const JsonSerializerHelper &pk) \
+	{	\
+	  DESERIALIZE(__VA_ARGS__); \
+    }	\
+	void json_pack(Json::Value& o) const \
+	{ \
+		JsonSerializerHelper pk; 	\
+		json::type::make_define(EXPAND(__VA_ARGS__)).json_pack(pk, m_flags); \
+		o = pk.JsonValue; 	\
+	} \
+	void json_unpack(const Json::Value& o) \
+	{ \
+		JsonSerializerHelper pk;	\
+		pk.JsonValue = o;	\
+		json::type::make_define(EXPAND(__VA_ARGS__)).json_unpack(pk, m_flags); \
+	} \
+private: \
+    std::map<std::string, bool> m_flags; 
+
+namespace json {
+namespace type {
+
+
+template <typename A0 = void<%1.upto(GENERATION_LIMIT+1) {|i|%>, typename A<%=i%> = void<%}%>>
+struct define;
+
+
+template <>
+struct define<> {
+	void json_pack(JsonSerializerHelper& pk, const std::map<std::string, bool>& m_flags) const
+	{
+		pk.JsonValue = Json::Value::null;
+	}
+	void json_unpack(JsonSerializerHelper &pk, std::map<std::string, bool>& m_flags)
+	{
+	}
+};
+<%0.upto(GENERATION_LIMIT) {|i|%>
+template <typename A0<%1.upto(i) {|j|%>, typename A<%=j%><%}%>>
+struct define<A0<%1.upto(i) {|j|%>, A<%=j%><%}%>> {
+	define(const std::string& _k0<%0.upto(i-1) {|j|%>, A<%=j%>& _a<%=j%>, const std::string& _k<%=j+1%><%}%>, A<%=i%>& _a<%=i%>) :
+		k0(_k0)<%0.upto(i-1) {|j|%>, a<%=j%>(_a<%=j%>), k<%=j+1%>(_k<%=j+1%>)<%}%>, a<%=i%>(_a<%=i%>) {}
+	void json_pack(JsonSerializerHelper& pk, const std::map<std::string, bool>& m_flags) const
+	{<%0.upto(i) {|j|%>
+		if (m_flags.find(k<%=j%>) != m_flags.end()) {
+			pk.Serialize(k<%=j%>, a<%=j%>);
+		}<%}%>
+	}
+	void json_unpack(JsonSerializerHelper &pk, std::map<std::string, bool>& m_flags)
+	{<%0.upto(i) {|j|%>
+		if (pk.JsonValue.isMember(k<%=j%>)) { 
+			pk.DeSerialize(k<%=j%>, a<%=j%>); 
+			m_flags[k<%=j%>]=true; 
+		}<%}%>
+	}
+	<%0.upto(i) {|j|%>
+	std::string k<%=j%>;
+	A<%=j%>& a<%=j%>;<%}%>
+};
+<%}%>
+
+inline define<> make_define()
+{
+	return define<>();
+}
+<%0.upto(GENERATION_LIMIT) {|i|%>
+template <typename A0<%1.upto(i) {|j|%>, typename A<%=j%><%}%>>
+define<A0<%1.upto(i) {|j|%>, A<%=j%><%}%>> make_define(const std::string& k0<%0.upto(i-1) {|j|%>, A<%=j%>& a<%=j%>, const std::string& k<%=j+1%><%}%>, A<%=i%>& a<%=i%>)
+{
+	return define<A0<%1.upto(i) {|j|%>, A<%=j%><%}%>>(k0<%0.upto(i-1) {|j|%>, a<%=j%>, k<%=j+1%><%}%>, a<%=i%>);
+}
+<%}%>
+
+}  // namespace type
+}  // namespace json
+
+
+#endif 
+
